@@ -1,0 +1,76 @@
+version: "2"
+
+services:
+
+  db:
+    image: mysql:5.7
+    container_name: omeka_db
+    restart: always
+    networks:
+      - network1
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secretpassword #FIXME
+      MYSQL_DATABASE: secretstring #FIXME
+      MYSQL_USER: secretstring #FIXME
+      MYSQL_PASSWORD: secretstring #FIXME
+
+  omeka:
+    depends_on:
+      - db
+    container_name: omekas
+    image: omeka
+    build:
+      context: .
+    restart: always
+    networks:
+      - network1
+    links:
+      - db:db
+    volumes:
+      - omeka:/var/www/html/volume
+      - ./database.ini:/var/www/html/config/database.ini
+      - ./bootstrap:/var/www/html/themes/bootstrap
+      - ./images:/home/images
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`ADD_YOUR_DOMAIN_HERE`)" #FIXME
+      - "traefik.http.routers.whoami.entrypoints=websecure"
+      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.test-redirectscheme.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.test-redirectscheme.redirectscheme.permanent=true"
+      - "traefik.http.middlewares.test-redirectscheme.redirectscheme.port=443"
+
+  traefik:
+    image: traefik:latest
+    restart: always
+    networks:
+      - network1
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=ADD_YOUR_EMAIL_HERE" #FIXME
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  db:
+  omeka:
+
+networks:
+  network1:
+    external: true

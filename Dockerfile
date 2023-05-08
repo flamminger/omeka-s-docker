@@ -27,7 +27,7 @@ RUN apt-get -qq update && apt-get -qq -y --no-install-recommends install \
 
 # Install the PHP extensions we need
 RUN docker-php-ext-configure gd --with-jpeg=/usr/include/ --with-freetype=/usr/include/
-RUN docker-php-ext-install -j$(nproc) iconv pdo pdo_mysql mysqli gd
+RUN docker-php-ext-install -j$(nproc) iconv pdo pdo_mysql mysqli gd exif
 RUN yes | pecl install imagick && docker-php-ext-enable imagick 
 
 # Support for more languages, e.g. for date formatting and month names
